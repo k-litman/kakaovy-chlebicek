@@ -92,4 +92,4 @@ class KakaovyChlebicek(commands.Bot):
             print(guild.name)
             self.guild_dict[guild.id] = Guild()
         print(self.guild_dict)
-        await self.change_presence(activity=discord.Game(name='haha ja dzialam!'))
+        await self.change_presence(activity=discord.Game(name='haha ja dzialam na serwerze!'))
