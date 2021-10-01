@@ -7,8 +7,9 @@ from src.discord.bot import KakaovyChlebicek
 def main():
     load_dotenv()
     TOKEN = getenv('DISCORD_TOKEN')
+    FFMPEG_PATH = getenv('FFMPEG_PATH')
 
-    bot = KakaovyChlebicek()
+    bot = KakaovyChlebicek(FFMPEG_PATH)
     bot.run(TOKEN)
 
 
