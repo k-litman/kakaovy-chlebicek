@@ -21,7 +21,7 @@ class KakaovyChlebicek(commands.Bot):
     guild_dict: Dict[int, Guild] = {}
 
     def __init__(self, ffmpeg_path):
-        super().__init__(command_prefix='!', intents=intents)
+        super().__init__(command_prefix='$', intents=intents)
 
         @self.command(name='ping')
         async def ping(ctx):
@@ -115,7 +115,7 @@ class KakaovyChlebicek(commands.Bot):
             print(guild.name)
             self.guild_dict[guild.id] = Guild()
         print(self.guild_dict)
-        await self.change_presence(activity=discord.Game(name='[!] haha ja dzialam na serwerze!'))
+        await self.change_presence(activity=discord.Game(name='[$] haha ja dzialam na serwerze!'))
 
     async def on_guild_join(self, guild):
         print(f'joined {guild.name}')
