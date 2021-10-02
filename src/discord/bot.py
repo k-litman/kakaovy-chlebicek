@@ -14,6 +14,7 @@ intents = discord.Intents.all()
 class Guild:
     playing: bool = False
     queue: list[tuple[str, str]] = field(default_factory=lambda: [])
+    loop: bool = False
 
 
 class KakaovyChlebicek(commands.Bot):
@@ -57,7 +58,11 @@ class KakaovyChlebicek(commands.Bot):
                 await ctx.send(f'gram: {title}')
                 while voice_channel.is_playing():
                     await sleep(0.1)
-                remove(filename)
+
+                if self.guild_dict[guild_id].loop:
+                    self.guild_dict[guild_id].queue.insert(0, (filename, title))
+                else:
+                    remove(filename)
 
                 print(self.guild_dict[guild_id].queue)
 
@@ -65,6 +70,8 @@ class KakaovyChlebicek(commands.Bot):
                 await ctx.message.guild.voice_client.disconnect()
             except Exception:
                 pass
+
+            self.guild_dict[guild_id].loop = False
 
         @self.command(name='stop')
         async def stop(ctx):
@@ -74,6 +81,7 @@ class KakaovyChlebicek(commands.Bot):
                 await voice_client.disconnect()
 
             self.guild_dict[guild_id].queue.clear()
+            self.guild_dict[guild_id].loop = False
 
         @self.command(name='queue')
         async def queue(ctx):
@@ -95,6 +103,11 @@ class KakaovyChlebicek(commands.Bot):
             else:
                 await ctx.send('ale co chcesz skipowac jak nie gram')
 
+        @self.command(name='loop')
+        async def loop(ctx):
+            guild_id = ctx.message.guild.id
+            self.guild_dict[guild_id].loop = not self.guild_dict[guild_id].loop
+            await ctx.send(f'teraz {"nie " if not self.guild_dict[guild_id].loop else ""} loopuje')
 
     async def on_ready(self):
         print('Bot loaded')
@@ -103,3 +116,7 @@ class KakaovyChlebicek(commands.Bot):
             self.guild_dict[guild.id] = Guild()
         print(self.guild_dict)
         await self.change_presence(activity=discord.Game(name='haha ja dzialam na serwerze!'))
+
+    async def on_guild_join(self, guild):
+        print(f'joined {guild.name}')
+        self.guild_dict[guild.id] = Guild()
