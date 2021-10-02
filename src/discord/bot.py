@@ -86,6 +86,16 @@ class KakaovyChlebicek(commands.Bot):
             else:
                 await ctx.send('kolejka jest pusta!')
 
+        @self.command(name='skip')
+        async def skip(ctx):
+            voice_client = ctx.message.guild.voice_client
+            if voice_client.is_connected():
+                await voice_client.stop()
+                await ctx.send('juz skipuke')
+            else:
+                await ctx.send('ale co chcesz skipowac jak nie gram')
+
+
     async def on_ready(self):
         print('Bot loaded')
         for guild in self.guilds:
