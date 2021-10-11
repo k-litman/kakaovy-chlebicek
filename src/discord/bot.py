@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 import discord
 from discord.ext import commands
-from typing import Dict
-from asyncio import sleep
+import asyncio
+from async_timeout import timeout
 from os import remove, path
+import random
 
 from src.youtube.download import YTDLSource
 
@@ -17,71 +18,82 @@ class Guild:
     loop: bool = False
 
 
-class KakaovyChlebicek(commands.Bot):
-    guild_dict: Dict[int, Guild] = {}
+class Queue(asyncio.Queue):
+    def clear(self):
+        self._queue.clear()
 
+    def shuffle(self):
+        random.shuffle(self._queue)
+
+    def remove(self, index):
+        del self._queue[index]
+
+
+class Player:
+    def __init__(self, ctx):
+        self.bot = ctx.bot
+
+        # properties
+        self.loop = False
+        self.volume = 0.5
+
+        self.current = None
+        self.queue = Queue()
+        self.next = asyncio.Event()
+
+        self.player = self.bot.create_task(self.player_task())
+
+    def __del__(self):
+        self.player.cancel()
+
+    async def player_task(self):
+        while True:
+            self.next.clear()
+
+            if not self.loop:
+                # one second offset between end of song and disconnection
+                try:
+                    async with timeout(1):
+                        self.current = await self.queue.get()
+                except asyncio.TimeoutError:
+                    self.bot.loop.create_task(self.stop())
+                    return
+
+            self.current.source.volume = self.volume
+            # self.voice.pl
+
+            await self.next.wait()
+
+    async def stop(self):
+        self.queue.clear()
+
+
+class KakaovyChlebicek(commands.Bot):
     def __init__(self, ffmpeg_path):
         super().__init__(command_prefix='$', intents=intents)
+        self.players = {}
 
         @self.command(name='ping')
         async def ping(ctx):
             await ctx.message.reply('Pong')
 
         @self.command(name='play')
-        async def play(ctx, *, url):
-            guild_id = ctx.message.guild.id
-            if not ctx.message.author.voice:
-                await ctx.send(f'{ctx.message.author.name} - no jak mam grac jezeli ciebie na kanale nie ma?!')
-                return
-            elif ctx.message.guild.voice_client is not None:
-                filename, title = await YTDLSource.from_url(url, loop=self.loop)
-                self.guild_dict[guild_id].queue.append((filename, title))
-                await ctx.send(f'{ctx.message.author.name} - no jak ja juz gram, dodaje do kolejki: {title}')
-                return
-            else:
-                await ctx.message.author.voice.channel.connect()
+        async def play(ctx, *, search):
+            player = self.players.get(ctx.guild.id)
+            if not player:
+                player = Player(ctx)
+                self.players[ctx.guild.id] = player
 
-            filename, title = await YTDLSource.from_url(url, loop=self.loop)
-            self.guild_dict[guild_id].queue.append((filename, title))
-            while self.guild_dict[guild_id].queue:
-                filename, title = self.guild_dict[guild_id].queue.pop(0)
-                print(filename, title)
-                # self.guild_dict[guild_id].queue.pop(0)
 
-                server = ctx.message.guild
-                voice_channel = server.voice_client
 
-                async with ctx.typing():
-                    if not path.exists(filename):
-                        filename, title = await YTDLSource.from_url(url, loop=self.loop)
-                    voice_channel.play(discord.FFmpegPCMAudio(executable=ffmpeg_path, source=filename))
-                await ctx.send(f'gram: {title}')
-                while voice_channel.is_playing():
-                    await sleep(0.1)
-
-                if self.guild_dict[guild_id].loop:
-                    self.guild_dict[guild_id].queue.insert(0, (filename, title))
-                else:
-                    remove(filename)
-
-                print(self.guild_dict[guild_id].queue)
-
-            try:
-                await ctx.message.guild.voice_client.disconnect()
-            except Exception:
-                pass
-
-            self.guild_dict[guild_id].loop = False
 
         @self.command(name='stop')
         async def stop(ctx):
-            guild_id = ctx.message.guild.id
-            voice_client = ctx.message.guild.voice_client
-            if voice_client.is_connected():
-                await voice_client.disconnect()
+            if not ctx.voice_client:
+                await ctx.send('no jak mam stopowac jak nie gram')
+                return
 
-            self.guild_dict[guild_id].queue.clear()
-            self.guild_dict[guild_id].loop = False
+            ctx.
 
         @self.command(name='queue')
         async def queue(ctx):
